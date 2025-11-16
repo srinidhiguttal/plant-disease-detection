@@ -9,7 +9,7 @@ This project was collaboratively developed by:
 - **Srinidhi Guttal**  
 - **Siri Chandana P Katti**
 
-### 🧩 My Contributions (Srinidhi Guttal)
+### 🧩 Implementation
 - Designed and implemented the **Convolutional Neural Network (CNN)** model for leaf disease detection.  
 - Developed the **infection severity classification module** to categorize infection levels as *Low, Medium,* or *High.*  
 - Integrated a **pesticide recommendation system** to guide farmers on whether spraying is required.  
