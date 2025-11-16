@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Plant Disease Detection</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to right, #e0f7fa, #e8f5e9);
+    margin: 0;
+    padding: 20px;
+    color: #333;
+  }
+  h1 {
+    text-align: center;
+    color: #2e7d32;
+    margin-bottom: 10px;
+  }
+  h2 {
+    color: #388e3c;
+    margin-bottom: 8px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 800px;
+  }
+  form, video, canvas, img, button, .result {
+    display: block;
+    margin: 10px auto;
+    text-align: center;
+  }
+  input[type="file"] {
+    display: none;
+  }
+  .file-label {
+    background: #4caf50;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    display: inline-block;
+  }
+  .file-label:hover {
+    background: #388e3c;
+  }
+  button {
+    background: #2e7d32;
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.1s;
+    margin-top: 10px;
+  }
+  button:hover {
+    background: #1b5e20;
+  }
+  button:active {
+    transform: scale(0.97);
+  }
+  video, canvas {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+  #previewImg {
+    max-width: 300px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+  }
+  .result {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    background: #f1f8e9;
+    border-left: 6px solid #2e7d32;
+    text-align: left;
+  }
+  .result p {
+    margin: 5px 0;
+  }
+  #status {
+    color: #1565c0;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 30px 0;
+  }
+
+  /* --- Live camera horizontal layout --- */
+  .live-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 20px;
+  }
+  .live-left, .live-right {
+    flex: 1 1 300px;
+    max-width: 350px;
+  }
+  .live-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  #snapshot {
+    max-width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+  @media (max-width: 700px){
+    .live-container{
+      flex-direction: column;
+      align-items: center;
+    }
+    .live-left, .live-right{
+      max-width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+<h1>🌿 Plant Disease Detection</h1>
+
+<div class="card">
+  <!-- Upload Section -->
+  <h2>Upload an Image</h2>
+  <form id="uploadForm" enctype="multipart/form-data">
+    <label for="imageInput" class="file-label">Choose File</label>
+    <input type="file" name="image" id="imageInput" accept="image/*">
+    <button type="submit">Predict from Image</button>
+  </form>
+  <img id="previewImg" src="#" alt="Uploaded Image" style="display:none;">
+</div>
+
+<hr>
+
+<div class="card">
+  <!-- Live Camera Section -->
+  <h2>Live Camera Scan</h2>
+  <div class="live-container">
+    <div class="live-left">
+      <video id="video" autoplay></video>
+    </div>
+    <div class="live-right">
+      <button id="captureBtn">📸 Scan Leaf Live</button>
+      <canvas id="snapshot"></canvas>
+      <p id="status"></p>
+    </div>
+  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
+</div>
+
+<div class="card result" id="result" style="display:none;">
+  <p><strong>Disease:</strong> <span id="disease"></span></p>
+  <p><strong>Confidence:</strong> <span id="confidence"></span>%</p>
+  <p><strong>Infection Level:</strong> <span id="severity"></span></p>
+  <p><strong>Action:</strong> <span id="action"></span></p>
+</div>
+
+<script>
+// Upload Image
+const uploadForm = document.getElementById('uploadForm');
+const previewImg = document.getElementById('previewImg');
+const resultDiv = document.getElementById('result');
+
+uploadForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById('imageInput');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  previewImg.src = URL.createObjectURL(file);
+  previewImg.style.display = 'block';
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch('/predict', { method: 'POST', body: formData });
+    const data = await response.json();
+
+    if (data.error) { alert(data.error); return; }
+
+    resultDiv.style.display = 'block';
+    document.getElementById('disease').innerText = data.disease;
+    document.getElementById('confidence').innerText = data.confidence.toFixed(2);
+    document.getElementById('severity').innerText = data.severity;
+    document.getElementById('action').innerText = data.action;
+
+  } catch (error) {
+    alert("Error contacting server: " + error);
+  }
+});
+
+// Live Camera
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const snapshot = document.getElementById('snapshot');
+const captureBtn = document.getElementById('captureBtn');
+const statusText = document.getElementById('status');
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => { video.srcObject = stream; })
+.catch(err => { alert("Error accessing camera: " + err); });
+
+captureBtn.addEventListener('click', async () => {
+  statusText.innerText = "🔍 Scanning leaf...";
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  snapshot.width = canvas.width;
+  snapshot.height = canvas.height;
+  snapshot.getContext('2d').drawImage(canvas, 0, 0);
+
+  canvas.toBlob(async (blob) => {
+    const formData = new FormData();
+    formData.append('image', blob, 'leaf.jpg');
+
+    try {
+      const response = await fetch('/predict', { method: 'POST', body: formData });
+      const data = await response.json();
+
+      if (data.error) { alert(data.error); statusText.innerText = ""; return; }
+
+      statusText.innerText = "✅ Scan complete!";
+      resultDiv.style.display = 'block';
+      document.getElementById('disease').innerText = data.disease;
+      document.getElementById('confidence').innerText = data.confidence.toFixed(2);
+      document.getElementById('severity').innerText = data.severity;
+      document.getElementById('action').innerText = data.action;
+
+    } catch (error) {
+      alert("Error contacting server: " + error);
+      statusText.innerText = "";
+    }
+  }, 'image/jpeg');
+});
+</script>
+</body>
+</html>
